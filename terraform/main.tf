@@ -85,8 +85,9 @@ resource "google_secret_manager_secret_iam_member" "cloud_run_cors_allow_origin"
 # ---------------------------------------------------------------------------
 
 resource "google_cloud_run_v2_service" "api" {
-  name     = "wallet-api"
-  location = var.region
+  name                = "wallet-api"
+  location            = var.region
+  deletion_protection = false
 
   template {
     service_account = google_service_account.cloud_run.email
