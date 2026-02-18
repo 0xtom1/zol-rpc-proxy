@@ -122,9 +122,16 @@ resource "google_cloud_run_v2_service" "api" {
 
   depends_on = [
     google_project_service.run,
+    google_secret_manager_secret_version.helius_api_key,
+    google_secret_manager_secret_version.cors_allow_origin,
     google_secret_manager_secret_iam_member.cloud_run_helius_api_key,
     google_secret_manager_secret_iam_member.cloud_run_cors_allow_origin,
   ]
+
+  timeouts {
+    create = "10m"
+    update = "10m"
+  }
 }
 
 # Allow unauthenticated invocations (public API)
