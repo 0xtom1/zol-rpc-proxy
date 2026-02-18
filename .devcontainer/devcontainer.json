@@ -1,9 +1,8 @@
 {
-	"name": "Helius RPC Proxy",
+	"name": "Zol RPC Proxy",
 	"image": "mcr.microsoft.com/devcontainers/typescript-node:20",
 	"features": {
 		"ghcr.io/devcontainers/features/terraform:1": {},
-		"ghcr.io/devcontainers/features/google-cloud-cli:1": {},
 		"ghcr.io/devcontainers/features/docker-in-docker:2": {}
 	},
 	"forwardPorts": [3000],
