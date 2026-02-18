@@ -12,9 +12,11 @@
 		"test": "vitest run"
 	},
 	"dependencies": {
+		"@fastify/rate-limit": "^10.0.0",
 		"@fastify/websocket": "^11.0.0",
 		"fastify": "^5.0.0",
 		"fastify-plugin": "^5.0.0",
+		"ioredis": "^5.0.0",
 		"ws": "^8.0.0"
 	},
 	"devDependencies": {

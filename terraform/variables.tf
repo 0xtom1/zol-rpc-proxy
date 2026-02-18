@@ -35,3 +35,9 @@ variable "cors_allow_origin" {
   type        = string
   default     = "*"
 }
+
+variable "redis_memory_size_gb" {
+  description = "Memorystore Redis instance size in GB"
+  type        = number
+  default     = 1
+}

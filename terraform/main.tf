@@ -22,6 +22,43 @@ resource "google_project_service" "iam" {
   disable_on_destroy = false
 }
 
+resource "google_project_service" "redis" {
+  service            = "redis.googleapis.com"
+  disable_on_destroy = false
+}
+
+resource "google_project_service" "vpcaccess" {
+  service            = "vpcaccess.googleapis.com"
+  disable_on_destroy = false
+}
+
+# ---------------------------------------------------------------------------
+# Serverless VPC Access connector (lets Cloud Run reach Memorystore)
+# ---------------------------------------------------------------------------
+
+resource "google_vpc_access_connector" "connector" {
+  name          = "wallet-api-connector"
+  region        = var.region
+  ip_cidr_range = "10.8.0.0/28"
+  network       = "default"
+
+  depends_on = [google_project_service.vpcaccess]
+}
+
+# ---------------------------------------------------------------------------
+# Memorystore Redis (rate limiting + future response caching)
+# ---------------------------------------------------------------------------
+
+resource "google_redis_instance" "cache" {
+  name           = "wallet-api-cache"
+  tier           = "BASIC"
+  memory_size_gb = var.redis_memory_size_gb
+  region         = var.region
+  redis_version  = "REDIS_7_0"
+
+  depends_on = [google_project_service.redis]
+}
+
 # ---------------------------------------------------------------------------
 # Secrets
 # ---------------------------------------------------------------------------
@@ -92,6 +129,11 @@ resource "google_cloud_run_v2_service" "api" {
   template {
     service_account = google_service_account.cloud_run.email
 
+    vpc_access {
+      connector = google_vpc_access_connector.connector.id
+      egress    = "PRIVATE_RANGES_ONLY"
+    }
+
     containers {
       image = var.image
 
@@ -118,6 +160,11 @@ resource "google_cloud_run_v2_service" "api" {
           }
         }
       }
+
+      env {
+        name  = "REDIS_HOST"
+        value = google_redis_instance.cache.host
+      }
     }
   }
 
@@ -127,6 +174,8 @@ resource "google_cloud_run_v2_service" "api" {
     google_secret_manager_secret_version.cors_allow_origin,
     google_secret_manager_secret_iam_member.cloud_run_helius_api_key,
     google_secret_manager_secret_iam_member.cloud_run_cors_allow_origin,
+    google_vpc_access_connector.connector,
+    google_redis_instance.cache,
   ]
 
   timeouts {

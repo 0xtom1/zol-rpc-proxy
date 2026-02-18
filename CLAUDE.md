@@ -51,6 +51,7 @@ terraform/
 
 - **Imports use `.js` extensions** even for `.ts` source files (required by NodeNext module resolution)
 - **Plugins** use `fastify-plugin` (`fp(...)`) so decorations/hooks scope to the parent instance
+- **Plugin registration order** in `index.ts` matters: `redis` must come before `rateLimit` since `rateLimit` reads `fastify.redis`
 - **Route plugins** registered with `{ prefix: '/helius' }` from `src/index.ts`
 - **Raw body passthrough**: the helius route plugin registers a custom content-type parser that passes the raw string body to avoid re-serialization during proxying
 - **No `@fastify/cors`** — CORS is handled by a hand-rolled plugin in `src/plugins/cors.ts`
@@ -61,9 +62,10 @@ terraform/
 |---------------------|----------------------------------------------------------|
 | `HELIUS_API_KEY`    | Injected into all upstream Helius requests               |
 | `CORS_ALLOW_ORIGIN` | Comma-separated allowlist of origins; omit for wildcard `*` |
+| `REDIS_HOST`        | Memorystore Redis host IP (set by Terraform)             |
 | `PORT`              | Server port (default: `3000`)                            |
 
-In production these are sourced from GCP Secret Manager (not `.env` files).
+`HELIUS_API_KEY` and `CORS_ALLOW_ORIGIN` are sourced from GCP Secret Manager. `REDIS_HOST` is a plain env var set directly by Terraform from the Memorystore instance output.
 
 ## Routing logic
 
