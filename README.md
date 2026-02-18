@@ -113,6 +113,28 @@ The server starts at `http://localhost:3000`.
 
 ---
 
+## Testing
+
+Tests use [Vitest](https://vitest.dev) and Fastify's built-in `inject()` to test routes without starting a real server.
+
+Run the full test suite:
+
+```bash
+npm test
+```
+
+Watch mode during development:
+
+```bash
+npx vitest
+```
+
+Tests live in `tests/` and cover:
+- CORS header logic (wildcard, allowlist matching, preflight)
+- RPC routing (root vs subpath, API key injection, upstream error handling)
+
+---
+
 ## Deployment
 
 Infrastructure is managed with Terraform and deployed via GitHub Actions on push to `dev` or `main`.
