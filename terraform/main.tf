@@ -2,11 +2,6 @@
 # Project APIs
 # ---------------------------------------------------------------------------
 
-resource "google_project_service" "orgpolicy" {
-  service            = "orgpolicy.googleapis.com"
-  disable_on_destroy = false
-}
-
 resource "google_project_service" "run" {
   service            = "run.googleapis.com"
   disable_on_destroy = false
@@ -140,27 +135,17 @@ resource "google_cloud_run_v2_service" "api" {
   }
 }
 
-# Override org policy to allow allUsers IAM bindings on this project
-# Required when the parent org has Domain Restricted Sharing enforced
-resource "google_org_policy_policy" "allow_all_iam_members" {
-  name   = "projects/${var.project_id}/policies/iam.allowedPolicyMembers"
-  parent = "projects/${var.project_id}"
-
-  spec {
-    rules {
-      allow_all = "TRUE"
-    }
+# Allow unauthenticated invocations (public API)
+# Uses --no-invoker-iam-check instead of allUsers IAM binding to avoid
+# org policy restrictions on Domain Restricted Sharing
+resource "null_resource" "allow_unauthenticated" {
+  triggers = {
+    image = var.image
   }
 
-  depends_on = [google_project_service.orgpolicy]
-}
+  provisioner "local-exec" {
+    command = "gcloud run services update ${google_cloud_run_v2_service.api.name} --region=${var.region} --project=${var.project_id} --no-invoker-iam-check"
+  }
 
-# Allow unauthenticated invocations (public API)
-resource "google_cloud_run_v2_service_iam_member" "public_invoker" {
-  name     = google_cloud_run_v2_service.api.name
-  location = google_cloud_run_v2_service.api.location
-  role     = "roles/run.invoker"
-  member   = "allUsers"
-
-  depends_on = [google_org_policy_policy.allow_all_iam_members]
+  depends_on = [google_cloud_run_v2_service.api]
 }
