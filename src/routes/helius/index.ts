@@ -1,6 +1,6 @@
 import type { FastifyPluginAsync } from 'fastify'
-import { rpcHandler } from './rpc'
-import { websocketHandler } from './websocket'
+import { rpcHandler } from './rpc.js'
+import { websocketHandler } from './websocket.js'
 
 const heliusRoutes: FastifyPluginAsync = async (fastify) => {
 	// Pass raw body string to rpcHandler for transparent proxying

@@ -1,7 +1,7 @@
 import Fastify from 'fastify'
 import websocket from '@fastify/websocket'
-import corsPlugin from './plugins/cors'
-import heliusRoutes from './routes/helius'
+import corsPlugin from './plugins/cors.js'
+import heliusRoutes from './routes/helius/index.js'
 
 const app = Fastify({ logger: true })
 
