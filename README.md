@@ -94,7 +94,7 @@ CORS_ALLOW_ORIGIN=https://app.example.com,https://beta.example.com
 Requires the [Dev Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) extension and Docker Desktop.
 
 1. Open the repo in VS Code and select **Reopen in Container**
-2. The container includes Node.js 20, Terraform, and Docker-in-Docker
+2. The container includes Node.js 20 and Terraform
 3. `npm install` runs automatically on container start
 
 Copy `.env.example` to `.env` and populate the values:
