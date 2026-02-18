@@ -1,4 +1,5 @@
 import WebSocket, { type RawData } from 'ws'
+import type { SocketStream } from '@fastify/websocket'
 import type { FastifyRequest } from 'fastify'
 
 const BUFFER_TIMEOUT_MS = 10000
@@ -10,7 +11,9 @@ const KEEPALIVE_MESSAGE = JSON.stringify({
 	method: 'helius_keepalive',
 })
 
-export function websocketHandler(socket: WebSocket, request: FastifyRequest): void {
+export function websocketHandler(connection: SocketStream, request: FastifyRequest): void {
+	const socket = connection.socket
+
 	const apiKey = process.env.HELIUS_API_KEY
 	if (!apiKey) {
 		socket.close(1011, 'Missing HELIUS_API_KEY')
