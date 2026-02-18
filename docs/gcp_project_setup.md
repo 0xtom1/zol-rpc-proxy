@@ -103,6 +103,12 @@ gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
   --member="serviceAccount:github-actions-sa@${PROJECT_ID}.iam.gserviceaccount.com" \
   --role="roles/run.admin"
 
+# roles/orgpolicy.policyAdmin is needed for Terraform to override the Domain Restricted
+# Sharing org policy at the project level (allows allUsers on Cloud Run)
+gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+  --member="serviceAccount:github-actions-sa@${PROJECT_ID}.iam.gserviceaccount.com" \
+  --role="roles/orgpolicy.policyAdmin"
+
 # 5. Allow GitHub Actions to impersonate the service account
 gcloud iam service-accounts add-iam-policy-binding \
   "github-actions-sa@${PROJECT_ID}.iam.gserviceaccount.com" \
@@ -206,6 +212,19 @@ Check that:
 ### "Permission denied on run.services.setIamPolicy"
 
 The service account needs `roles/run.admin` (Step 3, item 4). Terraform uses this to make the Cloud Run service publicly accessible.
+
+### "One or more users named in the policy do not belong to a permitted customer"
+
+This is the GCP **Domain Restricted Sharing** org policy (`constraints/iam.allowedPolicyMembers`) blocking `allUsers` from being granted IAM roles. Terraform handles this automatically by overriding the policy at the project level (`google_org_policy_policy.allow_all_iam_members` in `main.tf`), but the GitHub Actions service account needs `roles/orgpolicy.policyAdmin` to apply that override.
+
+Grant the role:
+```bash
+gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+  --member="serviceAccount:github-actions-sa@${PROJECT_ID}.iam.gserviceaccount.com" \
+  --role="roles/orgpolicy.policyAdmin"
+```
+
+Then re-run the deploy workflow. If your GCP organization has this constraint locked at the org level with no project-level overrides allowed, contact your GCP org admin to either grant you override permission or exempt the project from the policy.
 
 ### "Artifact Registry repository already exists"
 
