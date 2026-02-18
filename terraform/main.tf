@@ -23,18 +23,6 @@ resource "google_project_service" "iam" {
 }
 
 # ---------------------------------------------------------------------------
-# Artifact Registry
-# ---------------------------------------------------------------------------
-
-resource "google_artifact_registry_repository" "api" {
-  location      = var.region
-  repository_id = "wallet-api"
-  format        = "DOCKER"
-
-  depends_on = [google_project_service.artifactregistry]
-}
-
-# ---------------------------------------------------------------------------
 # Secrets
 # ---------------------------------------------------------------------------
 
