@@ -1,6 +1,6 @@
 # Zol RPC Proxy
 
-A Node.js proxy server for [Helius](https://helius.xyz) RPC and API endpoints. Keeps your Helius API key off the client by forwarding requests server-side. Deployed to GCP Cloud Run via Terraform and GitHub Actions.
+A Node.js proxy server for [Helius](https://helius.xyz) RPC and API endpoints. Keeps the Helius API key off the client by forwarding requests server-side. Deployed to GCP Cloud Run via Terraform and GitHub Actions.
 
 Supports both JSON-RPC over HTTP and WebSocket.
 
@@ -17,7 +17,7 @@ Proxies JSON-RPC requests to Helius mainnet.
 **Upstream:** `https://mainnet.helius-rpc.com`
 
 ```bash
-curl -X POST https://YOUR_SERVICE_URL/helius \
+curl -X POST https://<service-url>/helius \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"getHealth"}'
 ```
@@ -32,28 +32,28 @@ Proxies requests to the Helius REST API. Any subpath after `/helius` is forwarde
 
 ```bash
 # Example: enhanced transactions
-curl -X POST https://YOUR_SERVICE_URL/helius/v0/transactions \
+curl -X POST https://<service-url>/helius/v0/transactions \
   -H "Content-Type: application/json" \
-  -d '{"transactions":["your_tx_signature"]}'
+  -d '{"transactions":["<tx_signature>"]}'
 ```
 
 ---
 
 ### `GET /helius` (WebSocket)
 
-Proxies WebSocket connections to Helius mainnet. Connect with any standard WebSocket client.
+Proxies WebSocket connections to Helius mainnet. Compatible with any standard WebSocket client.
 
 **Upstream:** `wss://mainnet.helius-rpc.com`
 
 ```js
-const ws = new WebSocket('wss://YOUR_SERVICE_URL/helius')
+const ws = new WebSocket('wss://<service-url>/helius')
 
 ws.onopen = () => {
   ws.send(JSON.stringify({
     jsonrpc: '2.0',
     id: 1,
     method: 'accountSubscribe',
-    params: ['YOUR_ACCOUNT_ADDRESS']
+    params: ['<account_address>']
   }))
 }
 
@@ -78,13 +78,13 @@ CORS preflight handler — returns `200` with appropriate headers on all routes.
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `HELIUS_API_KEY` | Yes | — | Your Helius API key |
+| `HELIUS_API_KEY` | Yes | — | Helius API key |
 | `CORS_ALLOW_ORIGIN` | No | `*` | Comma-separated list of allowed origins. Defaults to wildcard. |
 | `PORT` | No | `3000` | Port the server listens on |
 
 To restrict CORS to specific domains:
 ```
-CORS_ALLOW_ORIGIN=https://yourapp.com,https://beta.yourapp.com
+CORS_ALLOW_ORIGIN=https://app.example.com,https://beta.example.com
 ```
 
 ---
@@ -97,7 +97,7 @@ Requires the [Dev Containers](https://marketplace.visualstudio.com/items?itemNam
 2. The container includes Node.js 20, Terraform, and Docker-in-Docker
 3. `npm install` runs automatically on container start
 
-Copy `.env.example` to `.env` and fill in your key:
+Copy `.env.example` to `.env` and populate the values:
 
 ```bash
 cp .env.example .env
@@ -109,7 +109,7 @@ Start the dev server:
 npm run dev
 ```
 
-Server runs at `http://localhost:3000`.
+The server starts at `http://localhost:3000`.
 
 ---
 
@@ -137,14 +137,14 @@ See [`docs/gcp_project_setup.md`](docs/gcp_project_setup.md) for the one-time GC
 cd terraform
 
 terraform init \
-  -backend-config="bucket=YOUR_TF_STATE_BUCKET" \
+  -backend-config="bucket=<tf-state-bucket>" \
   -backend-config="prefix=helius-rpc-proxy/dev"
 
 terraform apply \
   -var-file="environments/dev.tfvars" \
-  -var="project_id=YOUR_PROJECT_ID" \
-  -var="image=us-central1-docker.pkg.dev/YOUR_PROJECT/wallet-api/wallet-api:latest" \
-  -var="helius_api_key=YOUR_KEY"
+  -var="project_id=<project-id>" \
+  -var="image=us-central1-docker.pkg.dev/<project-id>/wallet-api/wallet-api:latest" \
+  -var="helius_api_key=<key>"
 ```
 
 ---
