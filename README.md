@@ -1,47 +1,177 @@
-# Helius RPC Proxy
+# Zol RPC Proxy
 
-[![RPC Proxy](docs/rpc_proxy.png)](https://helius.xyz)
+A Node.js proxy server for [Helius](https://helius.xyz) RPC and API endpoints. Keeps your Helius API key off the client by forwarding requests server-side. Deployed to GCP Cloud Run via Terraform and GitHub Actions.
 
-This repo hosts a one-click-deploy Cloudflare worker that proxies RPC requests to Helius. The proxy will allow you to keep your API key
-hidden from public requests made by clients. You will need both a [Helius](https://helius.xyz) account and a [Cloudflare](https://cloudflare.com) account to deploy this. Helius offers 100k credits for free each month, and Cloudflare workers can execute 100k invocations each day for free. Most projects can easily get started within these free tiers.
+Supports both JSON-RPC over HTTP and WebSocket.
 
-Both standard JSON RPC and Websockets are supported!
+---
 
-[Video Walkthrough](https://www.loom.com/share/a7add579f1c349d2a4bcab96ee04c47e)
+## API Endpoints
 
-# Setup
-### Step 1
+All endpoints are prefixed with `/helius`.
 
-Press the button below to deploy this to your own Cloudflare account:
+### `POST /helius`
 
-[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/helius-labs/helius-rpc-proxy)
+Proxies JSON-RPC requests to Helius mainnet.
 
-### Step 2
+**Upstream:** `https://mainnet.helius-rpc.com`
 
-Navigate to your newly deployed worker, and click "Settings" and then "Variables":
+```bash
+curl -X POST https://YOUR_SERVICE_URL/helius \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"getHealth"}'
+```
 
-![Variables](docs/add_variable.png)
+---
 
-### Step 3
-Add a new variable with the key name `HELIUS_API_KEY` and your Helius API key as the value:
+### `POST /helius/{path}`
 
-![Add Secret](docs/add_secret.png)
+Proxies requests to the Helius REST API. Any subpath after `/helius` is forwarded as-is.
 
-> NOTE: We recommend selecting "Encrypt". This will hide your key from the UI and API responses, and redact them from logs.
+**Upstream:** `https://api.helius.xyz/{path}`
 
-![Encrypt](docs/encrypt.png)
+```bash
+# Example: enhanced transactions
+curl -X POST https://YOUR_SERVICE_URL/helius/v0/transactions \
+  -H "Content-Type: application/json" \
+  -d '{"transactions":["your_tx_signature"]}'
+```
 
-### Step 4
-Refresh the page and confirm that your key is now saved and encrypted:
+---
 
-![Confirm](docs/confirm.png)
+### `GET /helius` (WebSocket)
 
-You can now use your worker URL as an the RPC endpoint in all SDK and client side configurations without your API key leaking!
-# Additional Security Steps
-This implementation is intentionally left in a less-than-ideal security state to facilitate easy deployment by anyone. If you would like to
-lock down your RPC proxy further, consider the following steps after you have successfully deployed the worker:
+Proxies WebSocket connections to Helius mainnet. Connect with any standard WebSocket client.
 
+**Upstream:** `wss://mainnet.helius-rpc.com`
 
-* Update the `Access-Control-Allow-Origin` header by adding a new variable with the key name `CORS_ALLOW_ORIGIN` to contain the host that your requests are coming from (usually your client application). For example, if you wanted to allow requests from `https://example.com`, you would change the header to `https://example.com`. To support multiple domains, set `CORS_ALLOW_ORIGIN` to a comma separated list of domains (e.g. `https://example.com,https://beta.example.com`).
-* [Cloudflare Web Application Firewall (WAF)](https://www.cloudflare.com/lp/ppc/waf-x/) - You can configure the WAF to inspect requests and allow/deny based on your own business logic.
-* Modify the IP address allow list in Helius for your API key to only accept connections from the Cloudflare ranges (https://cloudflare.com/ips-v4).
+```js
+const ws = new WebSocket('wss://YOUR_SERVICE_URL/helius')
+
+ws.onopen = () => {
+  ws.send(JSON.stringify({
+    jsonrpc: '2.0',
+    id: 1,
+    method: 'accountSubscribe',
+    params: ['YOUR_ACCOUNT_ADDRESS']
+  }))
+}
+
+ws.onmessage = (event) => console.log(event.data)
+```
+
+WebSocket features:
+- Message buffering (up to 10 messages, 10s timeout) while the upstream connection opens
+- Keepalive ping every 20s to prevent idle disconnects
+- Subprotocol negotiation passthrough
+- Bidirectional forwarding with full cleanup on close/error
+
+---
+
+### `OPTIONS *`
+
+CORS preflight handler — returns `200` with appropriate headers on all routes.
+
+---
+
+## Environment Variables
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `HELIUS_API_KEY` | Yes | — | Your Helius API key |
+| `CORS_ALLOW_ORIGIN` | No | `*` | Comma-separated list of allowed origins. Defaults to wildcard. |
+| `PORT` | No | `3000` | Port the server listens on |
+
+To restrict CORS to specific domains:
+```
+CORS_ALLOW_ORIGIN=https://yourapp.com,https://beta.yourapp.com
+```
+
+---
+
+## Local Development
+
+Requires the [Dev Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) extension and Docker Desktop.
+
+1. Open the repo in VS Code and select **Reopen in Container**
+2. The container includes Node.js 20, Terraform, and Docker-in-Docker
+3. `npm install` runs automatically on container start
+
+Copy `.env.example` to `.env` and fill in your key:
+
+```bash
+cp .env.example .env
+```
+
+Start the dev server:
+
+```bash
+npm run dev
+```
+
+Server runs at `http://localhost:3000`.
+
+---
+
+## Deployment
+
+Infrastructure is managed with Terraform and deployed via GitHub Actions on push to `dev` or `main`.
+
+| Branch | Environment |
+|--------|-------------|
+| `dev` | GCP project `wallet-backend-dev` |
+| `main` | GCP project `wallet-backend-prod` |
+
+See [`docs/gcp_project_setup.md`](docs/gcp_project_setup.md) for the one-time GCP and Workload Identity Federation bootstrap steps.
+
+### GCP Infrastructure (managed by Terraform)
+
+- **Cloud Run** — hosts the container, scales to zero
+- **Secret Manager** — stores `HELIUS_API_KEY` and `CORS_ALLOW_ORIGIN`
+- **Artifact Registry** — Docker image storage (created by the workflow on first run)
+- **Service Account** — runtime identity for Cloud Run with least-privilege secret access
+
+### Manual deploy
+
+```bash
+cd terraform
+
+terraform init \
+  -backend-config="bucket=YOUR_TF_STATE_BUCKET" \
+  -backend-config="prefix=helius-rpc-proxy/dev"
+
+terraform apply \
+  -var-file="environments/dev.tfvars" \
+  -var="project_id=YOUR_PROJECT_ID" \
+  -var="image=us-central1-docker.pkg.dev/YOUR_PROJECT/wallet-api/wallet-api:latest" \
+  -var="helius_api_key=YOUR_KEY"
+```
+
+---
+
+## Project Structure
+
+```
+src/
+├── index.ts                  # Fastify app entry point
+├── plugins/
+│   └── cors.ts               # CORS plugin (reads CORS_ALLOW_ORIGIN)
+└── routes/
+    └── helius/
+        ├── index.ts          # Registers HTTP + WebSocket routes
+        ├── rpc.ts            # HTTP proxy handler
+        └── websocket.ts      # WebSocket proxy handler
+terraform/
+├── main.tf                   # Cloud Run, Secret Manager, IAM
+├── variables.tf
+├── outputs.tf
+├── versions.tf
+└── environments/
+    ├── dev.tfvars
+    └── prod.tfvars
+.github/workflows/
+├── deploy.yml                # Build, push, terraform apply
+└── pr-checks.yml             # tsc, docker build, tf fmt/validate
+docs/
+└── gcp_project_setup.md      # GCP + WIF bootstrap guide
+```
